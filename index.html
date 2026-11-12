@@ -80,7 +80,7 @@ const L="ABCDE";
 const COLS=[...MODS.map(m=>({k:m.key,t:m.kode})),{k:"dy",t:"Dayak"},{k:"ev",t:"Evaluasi"}];
 
 // LINK APPSCRIPT GOOGLE SPREADSHEET DISINI
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyCu2q1HF9NidWGoX2FRi6FwtMCBDJPwZkhRWVXMgoglf-aex1a2rBrRwOf5QrVUXpd/exec";
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxSiVKo-ZX01Iwr_suAakJNxPpsTGBiJFjodBYiLwWcSSUEJBWCpZWX5Zpniv15v4xA/exec";
 
 let rows={},db=null,cur="1.1",ans={},done={};
 // identitas
@@ -108,7 +108,7 @@ function render(){
 // kuis
 function quiz(key,items,box){
  ans[key]=Array(items.length).fill(-1);
- box.innerHTML=`<div class="pbar"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Terjawab</span><span id="pg">0/${items.length}</span></div><div class="bar"><i id="pb"></i></div></div>
+ box.innerHTML=`<div class="pbar"><div style="display:flex;justify-space-between;font-weight:700"><span>Terjawab</span><span id="pg">0/${items.length}</span></div><div class="bar"><i id="pb"></i></div></div>
  ${items.map((q,i)=>`<div class="q"><div><span class="n">${i+1}.</span> ${q.q}${q.src?`<span class="src">${q.src}</span>`:""}</div>${q.o.map((o,j)=>`<label class="opt" data-i="${i}" data-j="${j}"><input type="radio" name="q${i}"><span><b>${L[j]}.</b> ${o}</span></label>`).join("")}</div>`).join("")}
  <div style="text-align:center;margin-top:16px"><button class="btn alt" id="fin">Kumpulkan Jawaban</button></div><div id="res"></div>`;
  box.querySelectorAll(".opt").forEach(e=>e.onclick=()=>{const i=+e.dataset.i;ans[key][i]=+e.dataset.j;box.querySelectorAll(`.opt[data-i="${i}"]`).forEach(x=>x.classList.toggle("sel",x===e));const d=ans[key].filter(a=>a>=0).length;$("pg").textContent=d+"/"+items.length;$("pb").style.width=d/items.length*100+"%"});
