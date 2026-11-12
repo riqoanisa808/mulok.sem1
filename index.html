@@ -78,7 +78,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const L="ABCDE";
 const COLS=[...MODS.map(m=>({k:m.key,t:m.kode})),{k:"dy",t:"Dayak"},{k:"ev",t:"Evaluasi"}];
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyrEA74708tXO5dPUJxn7kFWbQA9Z3ZcNlPRFQjHcYFqXbSq_ygkKeiFkuCB8g2jAODJQ/exec";
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxbTsL2jJv5kVlfY66Ce3MF8Ji1sU9AcN0fAOP8hnw5ZdJmR0j1iSK_NJahck1r-WtCnw/exec";
 let rows={},db=null,cur="1.1",ans={},done={};
 // identitas
 try{const s=JSON.parse(localStorage.getItem("mulok_me")||"{}");$("nama").value=s.nama||"";$("kelas").value=s.kelas||""}catch(e){}
