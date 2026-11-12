@@ -78,7 +78,10 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const L="ABCDE";
 const COLS=[...MODS.map(m=>({k:m.key,t:m.kode})),{k:"dy",t:"Dayak"},{k:"ev",t:"Evaluasi"}];
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxbTsL2jJv5kVlfY66Ce3MF8Ji1sU9AcN0fAOP8hnw5ZdJmR0j1iSK_NJahck1r-WtCnw/exec";
+
+// LINK APPSCRIPT GOOGLE SPREADSHEET DISINI
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyCu2q1HF9NidWGoX2FRi6FwtMCBDJPwZkhRWVXMgoglf-aex1a2rBrRwOf5QrVUXpd/exec";
+
 let rows={},db=null,cur="1.1",ans={},done={};
 // identitas
 try{const s=JSON.parse(localStorage.getItem("mulok_me")||"{}");$("nama").value=s.nama||"";$("kelas").value=s.kelas||""}catch(e){}
@@ -119,35 +122,88 @@ async function finish(key,items,box){
  box.querySelectorAll(".q").forEach((qe,i)=>{qe.querySelectorAll(".opt").forEach((o,j)=>{o.style.pointerEvents="none";o.classList.remove("sel");if(j===items[i].a)o.classList.add("ok");else if(j===a[i])o.classList.add("no")});if(items[i].e)qe.insertAdjacentHTML("beforeend",`<div class="exp">💡 ${items[i].e}</div>`)});
  $("fin").classList.add("hide");
  const st=await saveScore(key,nilai,benar,items.length);
- $("res").innerHTML=`<div class="card score"><div>${esc($("nama").value.trim())} • ${$("kelas").value}</div><div class="big">${nilai}</div><div>Benar ${benar} dari ${items.length} soal</div><p class="note">${st==="sheet"?"✅ Nilai sudah dikirim ke Google Sheet guru.":st==="bersama"?"✅ Nilai sudah masuk ke Rekap Nilai bersama.":"⚠ Nilai tersimpan di perangkat ini saja (rekap bersama tidak tersedia)."}</p><button class="btn" onclick="go('Rekap')">Lihat Rekap</button> <button class="btn ghost" onclick="render();window.scrollTo({top:0})">Ulangi Latihan</button></div>`;
+ $("res").innerHTML=`<div class="card score"><div>${esc($("nama").value.trim())} • ${$("kelas").value}</div><div class="big">${nilai}</div><div>Benar ${benar} dari ${items.length} soal</div><p class="note">${st==="sheet"?"✅ Nilai sudah dikirim ke Google Sheet guru.":st==="bersama"?"✅ Nilai sudah masuk ke Rekap Nilai bersama.":"⚠ Nilai tersimpan di perangkat ini saja."}</p><button class="btn" onclick="go('Rekap')">Lihat Rekap</button> <button class="btn ghost" onclick="render();window.scrollTo({top:0})">Ulangi Latihan</button></div>`;
  $("res").scrollIntoView({behavior:"smooth"});
 }
+
+// Simpan nilai ke Apps Script & Local Storage
 async function saveScore(key,nilai,benar,total){
  const id=myId(),base=rows[id]||{nama:$("nama").value.trim(),kelas:$("kelas").value};
  const rec={...base,["k"+key]:nilai,["b"+key]:benar+"/"+total,waktu:Date.now()};
  rows[id]=rec;updNav();
  try{localStorage.setItem("mulok_rekap",JSON.stringify(rows))}catch(e){}
- if(SCRIPT_URL){try{await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({kelas:rec.kelas,nama:rec.nama,key,nilai,benar:benar+"/"+total})});return "sheet"}catch(e){}}
- if(db){try{const ref=db.collection("nilai").doc(id);try{await ref.update({["k"+key]:nilai,["b"+key]:benar+"/"+total,waktu:rec.waktu})}catch(e){await ref.set(rec)}return "bersama"}catch(e){}}
+ 
+ if(SCRIPT_URL){
+   try{
+     await fetch(SCRIPT_URL,{
+       method:"POST",
+       mode:"no-cors",
+       headers:{"Content-Type":"text/plain;charset=utf-8"},
+       body:JSON.stringify({
+         kelas:rec.kelas,
+         nama:rec.nama,
+         key:key,
+         nilai:nilai,
+         benar:benar+"/"+total
+       })
+     });
+     return "sheet";
+   }catch(e){
+     console.error("Gagal kirim ke spreadsheet:",e);
+   }
+ }
+ if(db){
+   try{
+     const ref=db.collection("nilai").doc(id);
+     try{await ref.update({["k"+key]:nilai,["b"+key]:benar+"/"+total,waktu:rec.waktu})}catch(e){await ref.set(rec)}
+     return "bersama";
+   }catch(e){}
+ }
  return "lokal";
 }
+
 // rekap
 let flt="ALL";
 function avg(r){const v=COLS.map(c=>r["k"+c.k]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10:"-"}
-async function loadSheet(){if(!SCRIPT_URL)return;try{const r=await fetch(SCRIPT_URL),d=await r.json(),o={};d.forEach(x=>o[x.kelas+"__"+String(x.nama).toLowerCase().replace(/[^a-z0-9]+/g,"_")]=x);rows=o;updNav();if(cur==="Rekap")rekap($("view"))}catch(e){}}
-function rekap(v){if(SCRIPT_URL&&!rekap.l){rekap.l=1;loadSheet().then(()=>rekap.l=0)}
+
+async function loadSheet(){
+ if(!SCRIPT_URL)return;
+ try{
+   const r=await fetch(SCRIPT_URL);
+   const d=await r.json();
+   const o={};
+   d.forEach(x=>{
+     if(x.kelas && x.nama){
+       let uniqueKey=x.kelas+"__"+String(x.nama).toLowerCase().replace(/[^a-z0-9]+/g,"_");
+       o[uniqueKey]=x;
+     }
+   });
+   rows=o;
+   updNav();
+   if(cur==="Rekap")rekap($("view"));
+ }catch(e){
+   console.error("Gagal load dari spreadsheet:",e);
+ }
+}
+
+function rekap(v){
+ if(SCRIPT_URL&&!rekap.l){rekap.l=1;loadSheet().then(()=>rekap.l=0)}
  const all=Object.values(rows),ks=["11-1","11-2","11-3","11-4","11-5","11-6"];
- v.innerHTML=`<div class="card"><h2>Rekap Nilai Siswa</h2><div class="note">${all.length} siswa • ${db?"rekap bersama":"data perangkat ini"} • batas tuntas 75</div>
+ v.innerHTML=`<div class="card"><h2>Rekap Nilai Siswa</h2><div class="note">${all.length} siswa terdata • data terhubung ke Google Sheet • batas tuntas 75</div>
  <div class="chips"><button class="nb ${flt==="ALL"?"on":""}" data-k="ALL">Semua</button>${ks.map(k=>`<button class="nb ${flt===k?"on":""}" data-k="${k}">${k}</button>`).join("")}</div>
  <div class="scroll"><table><tr><th>#</th><th>Nama</th><th>Kelas</th>${COLS.map(c=>`<th>${c.t}</th>`).join("")}<th>Rata-rata</th></tr>
  ${all.filter(r=>flt==="ALL"||r.kelas===flt).sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)).map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.nama)}</td><td>${r.kelas}</td>${COLS.map(c=>{const n=r["k"+c.k];return `<td>${n==null?"-":`<span class="pill" style="background:${n>=75?"var(--ok)":"var(--bad)"}">${n}</span>`}</td>`}).join("")}<td><b>${avg(r)}</b></td></tr>`).join("")||`<tr><td colspan="${COLS.length+4}" class="note">Belum ada nilai.</td></tr>`}</table></div>
  <p style="margin-top:12px"><button class="btn ghost" id="csv">⬇ Unduh CSV</button></p></div>`;
  v.querySelectorAll(".chips .nb").forEach(b=>b.onclick=()=>{flt=b.dataset.k;rekap(v)});
- $("csv").onclick=async()=>{const h=["Kelas","Nama",...COLS.map(c=>c.t),"Rata-rata"];const csv=[h,...all.sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)).map(r=>[r.kelas,r.nama,...COLS.map(c=>r["k"+c.k]??""),avg(r)])].map(x=>x.map(y=>'"'+String(y).replace(/"/g,'""')+'"').join(",")).join("\n");try{const d=await claude.use("downloads");if(d){await d.save({filename:"rekap-nilai-mulok-xi.csv",data:csv});return}}catch(e){}const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="rekap-nilai-mulok-xi.csv";a.click()}
+ $("csv").onclick=async()=>{
+   const h=["Kelas","Nama",...COLS.map(c=>c.t),"Rata-rata"];
+   const csv=[h,...all.sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)).map(r=>[r.kelas,r.nama,...COLS.map(c=>r["k"+c.k]??""),avg(r)])].map(x=>x.map(y=>'"'+String(y).replace(/"/g,'""')+'"').join(",")).join("\n");
+   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="rekap-nilai-mulok-xi.csv";a.click();
+ }
 }
+
 try{rows=JSON.parse(localStorage.getItem("mulok_rekap")||"{}")}catch(e){}
 updNav();render();loadSheet();
-(async()=>{try{db=await claude.use("db");if(db){$("dbst").textContent="Rekap bersama aktif";db.collection("nilai").onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());rows=o;updNav();if(cur==="Rekap")rekap($("view"))},()=>{db=null;$("dbst").textContent=""})}}catch(e){db=null}})();
 </script>
 </body>
 </html>
